@@ -1,3 +1,4 @@
+[![ci](https://github.com/nginxinc/f5-ai-gateway-sdk-py/actions/workflows/ci.yml/badge.svg)](https://github.com/nginxinc/f5-ai-gateway-sdk-py/actions/workflows/ci.yml)
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B5618%2Ff5-ai-gateway-sdk-py.svg?type=shield&issueType=license)](https://app.fossa.com/projects/custom%2B5618%2Ff5-ai-gateway-sdk-py?ref=badge_shield&issueType=license)
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B5618%2Ff5-ai-gateway-sdk-py.svg?type=shield&issueType=security)](https://app.fossa.com/projects/custom%2B5618%2Ff5-ai-gateway-sdk-py?ref=badge_shield&issueType=security)
 
