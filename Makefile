@@ -1,4 +1,4 @@
-.PHONY: clean fmt lint lint.fix help test
+.PHONY: build clean fmt lint lint.fix help test
 
 .DEFAULT_GOAL := help
 
@@ -10,6 +10,9 @@ ifdef ($(findstring ggrep,$(GREP)))
 else
 	VERSION   ?= $(shell bash -c "grep -e '^version' pyproject.toml | sed 's/.*= //'")
 endif
+
+build: # Build the SDK into source distributions and wheel
+	uv build
 
 clean:  # Removes local .venv directories and cleans up Docker containers and images associated with this project.
 	rm -rf $(ROOTDIR)/.venv

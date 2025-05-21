@@ -2,7 +2,7 @@
 
 Follows the `pytest` format with the flexibility of adopting `unittest.TestCase` as deemed needed for the flexibility of moving forward quickly.
 
-## Executing Tests Locally
+## Executing Tests
 
 ## Prerequisites
 
