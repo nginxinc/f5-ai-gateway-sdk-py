@@ -1,0 +1,14 @@
+# whether to reject all that was given
+should_reject: null
+# what to reject with
+reject_reason: null
+# whether to flag the response as modified
+modified: null
+# what is modified
+modified_result: null
+# why modification took place
+modified_reason: null
+# verify that pydantic correctly converts a list to a set
+set_data:
+  - "a"
+  - "b"

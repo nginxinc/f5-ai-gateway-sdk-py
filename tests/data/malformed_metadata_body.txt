@@ -1,0 +1,12 @@
+--boundary
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json
+
+{ "exclude_bearclaw: true }
+--boundary
+Content-Disposition: form-data; name="input.messages"
+Content-Type: application/json
+
+{"role": "user", "content": "Some pastries are good, even don*ts. But bearclaws are better"}
+--boundary--
+    

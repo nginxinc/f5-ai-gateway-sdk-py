@@ -1,0 +1,6 @@
+key: value
+processor_id: test
+processor_version: "0.0.1"
+processor_result:
+  rejection_reason: rejection
+app_details: null

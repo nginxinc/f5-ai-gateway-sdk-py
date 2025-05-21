@@ -1,0 +1,3 @@
+[environment]
+# log_dir=test_logs  # test_logs at the repository root will be picked up by default; this allows for customization
+# config=tests/config  # this points to this file dynamically by default; this allows for customization

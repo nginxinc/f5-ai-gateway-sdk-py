@@ -1,0 +1,15 @@
+{
+	"key": "value",
+	"processor_id": "test",
+	"processor_version": "1.0.0",
+	"processor_result": {
+		"unit_test": true
+	},
+	"app_details": null,
+	"tags": {
+		"test1": [
+			"a",
+			"b"
+		]
+	}
+}

@@ -1,0 +1,8 @@
+name: test
+version: "1"
+namespace: "testing"
+id: "testing:test"
+path: ""
+# methods should be assigned distinctly in test
+methods: []
+signature_path: ""

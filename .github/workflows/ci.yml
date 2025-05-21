@@ -1,0 +1,157 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      force_publish_pypi:
+        description: "Bypass check to see if action is run on tag and attempt to publish"
+        type: boolean
+        default: false
+      override_uv_version:
+        description: "Build with a specific version"
+        type: string
+        default: ""
+      ref:
+        description: "ref to run CI against, if different than selected branch"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Read .tool-versions
+        uses: marocchino/tool-versions-action@18a164fa2b0db1cc1edf7305fcb17ace36d1c306 # v1.2.0
+        id: versions
+
+      - name: Install a specific version of uv
+        uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+        with:
+          version: "${{ steps.versions.outputs.uv }}"
+          python-version: "${{ steps.versions.outputs.python }}"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Test with pytest
+        run: make test
+
+      - name: Archive test_logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-logs
+          path: test_logs/
+          retention-days: 7
+
+      - name: Build wheels
+        env:
+          UV_DYNAMIC_VERSIONING_BYPASS: ${{ inputs.override_uv_version }}
+        run: uv build
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sdk-build
+          path: dist/
+          retention-days: 1
+
+  verify-build:
+    needs: [build]
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["3.11", "3.12", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: sdk-build
+          path: .github/data/dist/
+      - name: verify download
+        run: ls -la .github/data/dist/
+      - uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        with:
+          context: .github/data/
+          build-args: |
+            IMAGE=python:${{ matrix.version }}-slim
+
+  release-build:
+    if: ${{ (startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch') || inputs.force_publish_pypi }}
+    needs: [verify-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if version if valid for publishing
+        if: ${{ inputs.force_publish_pypi && !startsWith(inputs.ref, 'refs/tags/') }}
+        run: |
+          VERSION=${{ inputs.override_uv_version }}
+          if [ -z "${VAR}" ]; then
+              echo "Version override not set, continuing... "
+          elif ! $(echo "$VERSION" | grep -q '[a-zA-Z]'); then
+              cat << EOF
+          Version '${VERSION}' in pyproject.toml is major version.
+          Force publishing is only supported for pre-release versions.
+          Please create a tag in order to perform a release.
+          See here for versioning information: https://packaging.python.org/en/latest/discussions/versioning/
+          EOF
+              exit 1
+          else
+              echo "Version '${VERSION}' in pyproject.toml is pre-release, continuing... "
+          fi
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Read .tool-versions
+        uses: marocchino/tool-versions-action@18a164fa2b0db1cc1edf7305fcb17ace36d1c306 # v1.2.0
+        id: versions
+
+      - name: Install a specific version of uv
+        uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+        with:
+          version: "${{ steps.versions.outputs.uv }}"
+          python-version: "${{ steps.versions.outputs.python }}"
+          enable-cache: true
+
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: sdk-build
+          path: dist/
+      - name: Create release and upload assets
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' }}
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        with:
+          files: dist/f5_ai_gateway_sdk*
+          generate_release_notes: true
+
+      - name: Publish to Artifactory
+        if: ${{ startsWith(github.ref, 'refs/tags/') || inputs.force_publish_pypi }}
+        run: |
+          mkdir -p ~/.config/uv
+          cat <<EOF > ~/.config/uv/uv.toml
+          [[index]]
+          name = "f5-artifactory"
+          url = "https://${{ secrets.ARTIFACTORY_HOST }}/artifactory/api/pypi/f5-aigw-pypi/simple"
+          publish-url = "https://${{ secrets.ARTIFACTORY_HOST }}/artifactory/api/pypi/f5-aigw-pypi"
+          explicit = true
+          EOF
+          uv publish --index f5-artifactory --username ${{ secrets.ARTIFACTORY_USER }} --password ${{ secrets.ARTIFACTORY_PASSWORD }}
