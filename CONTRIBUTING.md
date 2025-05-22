@@ -16,9 +16,9 @@ what actions will and will not be tolerated.
 - The project uses python3.11 or higher and [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Python code should conform to the
   [PEP-8 style guidelines](https://www.python.org/dev/peps/pep-0008/)
-  whenever possible.
+  whenever possible, and formatted using `make fmt`.
 - Where feasible, include unit tests.
-- Tests should make use of the testing fixtures and tools on offer
+- Tests should make use of the fixtures and tools available in the project.
 - Code should pass `make lint` with no warnings.
 
 ### Getting started
@@ -34,6 +34,12 @@ make deps
 ```
 
 ### Linting code
+
+```bash
+make lint
+```
+
+### Formatting code
 
 ```bash
 make lint
@@ -64,8 +70,9 @@ Before working on a pull request which makes significant change, consider openin
 3. If you've changed APIs, update the documentation.
 4. Ensure the test suite passes.
    - This can be done with `make test`
-5. Make sure your code lints.
-   - This can be done with `make lint`
+5. Ensure code lints and is formatted correctly.
+   - This can be done with `make fmt` and `make lint`
+   - `make lint.fix` will attempt to resolve linting issues.
 6. If you haven't already, complete the Contributor License Agreement ("CLA").
 
 ## Contributor License Agreement ("CLA")
