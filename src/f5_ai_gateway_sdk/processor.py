@@ -5,6 +5,7 @@ This source code is licensed under the Apache License Version 2.0 found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import inspect
 import json
 import logging
 from abc import ABC
@@ -224,6 +225,13 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
                 f"Cannot create concrete class {cls.__name__}. "
                 "The DEPRECATED 'process' method must not be implemented "
                 "alongside 'process_input' or 'process_response'."
+            )
+        if is_process_overridden and inspect.iscoroutinefunction(cls.process):
+            # we don't want to add async capabilities to the deprecated function
+            raise TypeError(
+                f"Cannot create concrete class {cls.__name__}. "
+                "The DEPRECATED 'process' method does not support async. "
+                "Implement 'process_input' and/or 'process_response' instead."
             )
 
         return
@@ -875,15 +883,18 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
                     prompt_hash, response_hash = (None, None)
                     if input_direction:
                         prompt_hash = prompt.hash()
-                        result: Result | Reject = self.process_input(
+                        result = await self._handle_process_function(
+                            self.process_input,
                             metadata=metadata,
                             parameters=parameters,
                             prompt=prompt,
                             request=request,
                         )
+
                     else:
                         response_hash = response.hash()
-                        result: Result | Reject = self.process_response(
+                        result = await self._handle_process_function(
+                            self.process_response,
                             metadata=metadata,
                             parameters=parameters,
                             prompt=prompt,
@@ -1014,7 +1025,16 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
         # the method object directly from the Processor class, then it has been overridden.
         return instance_class_method_obj is not base_class_method_obj
 
-    def process_input(
+    async def _process_fallback(self, **kwargs) -> Result | Reject:
+        warnings.warn(
+            f"{type(self).__name__} uses the deprecated 'process' method. "
+            "Implement 'process_input' and/or 'process_response' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self._handle_process_function(self.process, **kwargs)
+
+    async def process_input(
         self,
         prompt: PROMPT,
         metadata: Metadata,
@@ -1043,26 +1063,20 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
 
                 return Result(processor_result=result)
         """
-        if self._is_method_overridden("process"):
-            warnings.warn(
-                f"{type(self).__name__} uses the deprecated 'process' method for input. "
-                "Implement 'process_input' instead.",
-                DeprecationWarning,
-                stacklevel=2,  # Points the warning to the caller of process_input
+        if not self._is_method_overridden("process"):
+            raise NotImplementedError(
+                f"{type(self).__name__} must implement 'process_input' or the "
+                "deprecated 'process' method to handle input."
             )
-            return self.process(
-                prompt=prompt,
-                response=None,
-                metadata=metadata,
-                parameters=parameters,
-                request=request,
-            )
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement 'process_input' or the "
-            "deprecated 'process' method to handle input."
+        return await self._process_fallback(
+            prompt=prompt,
+            response=None,
+            metadata=metadata,
+            parameters=parameters,
+            request=request,
         )
 
-    def process_response(
+    async def process_response(
         self,
         prompt: PROMPT | None,
         response: RESPONSE,
@@ -1096,23 +1110,17 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
                 return Result(processor_result=result)
         """
 
-        if self._is_method_overridden("process"):
-            warnings.warn(
-                f"{type(self).__name__} uses the deprecated 'process' method for response. "
-                "Implement 'process_response' instead.",
-                DeprecationWarning,
-                stacklevel=2,  # Points the warning to the caller of process_input
+        if not self._is_method_overridden("process"):
+            raise NotImplementedError(
+                f"{type(self).__name__} must implement 'process_response' or the "
+                "deprecated 'process' method to handle input."
             )
-            return self.process(
-                prompt=prompt,
-                response=response,
-                metadata=metadata,
-                parameters=parameters,
-                request=request,
-            )
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement 'process_response' or the "
-            "deprecated 'process' method to handle input."
+        return await self._process_fallback(
+            prompt=prompt,
+            response=response,
+            metadata=metadata,
+            parameters=parameters,
+            request=request,
         )
 
     def process(
@@ -1158,6 +1166,13 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
             "Processor subclasses must implement 'process' (deprecated) or "
             "'process_input'/'process_response'."
         )
+
+    async def _handle_process_function(self, func, **kwargs) -> Result | Reject:
+        if inspect.iscoroutinefunction(func):
+            result = await func(**kwargs)
+        else:
+            result = func(**kwargs)
+        return result
 
 
 def _validation_error_as_messages(err: ValidationError) -> list[str]:

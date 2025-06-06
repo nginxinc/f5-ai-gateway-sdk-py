@@ -813,6 +813,48 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
             AllImplementedProcessor()
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
+    def test_async_implemented(self):
+        class AsyncImplementedProcessor(Processor):
+            def __init__(self):
+                super().__init__(
+                    name="non-implemented-processor",
+                    namespace="fake",
+                    signature=BOTH_SIGNATURE,
+                    version="v1",
+                )
+
+            async def process_input(self):
+                return Result()
+
+            async def process_response(self):
+                return Result()
+
+        self.assertIsNotNone(AsyncImplementedProcessor())
+
+    def test_async_process_implemented(self):
+        expected_message = (
+            "Cannot create concrete class AsyncProcessImplementedProcessor. "
+            "The DEPRECATED 'process' method does not support async. "
+            "Implement 'process_input' and/or 'process_response' instead."
+        )
+
+        with pytest.raises(TypeError) as err:
+
+            class AsyncProcessImplementedProcessor(Processor):
+                def __init__(self):
+                    super().__init__(
+                        name="non-implemented-processor",
+                        namespace="fake",
+                        signature=BOTH_SIGNATURE,
+                        version="v1",
+                    )
+
+                async def process(self):
+                    return Result()
+
+            AsyncProcessImplementedProcessor()
+        self.assertIn(expected_message, err.value.args, str(err.value.args))
+
     def test_input_signature_match(self):
         """Verify we can instantiate a correct input-only processor"""
 
