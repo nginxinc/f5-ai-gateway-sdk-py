@@ -42,6 +42,12 @@ PROCESSOR_PATH = f"execute/{PROCESSOR_NAMESPACE}/{PROCESSOR_NAME}"
 SIGNATURE_PATH = f"signature/{PROCESSOR_NAMESPACE}/{PROCESSOR_NAME}"
 CONTENT_TYPE = "application/json"
 
+TEST_PROCESSORS = [
+    (fake_processors.JudgySync),
+    (fake_processors.JudgyAsync),
+    (fake_processors.DeprecatedJudgy),
+]
+
 
 def test_multipart_fields_breaking_change():
     """Verify that the multipart_fields have not changed without this test failing.
@@ -99,9 +105,7 @@ def test_multipart_fields_breaking_change():
     ), f"{result - expected} and {expected - result} should be empty"
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_processor_response_parameters_a_prompt_mismatch(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -151,9 +155,7 @@ def test_processor_response_parameters_a_prompt_mismatch(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_processor_overload_both_parameters(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -205,9 +207,7 @@ def test_processor_overload_both_parameters(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_processor_500_raising(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -257,15 +257,19 @@ def test_processor_500_raising(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_processor_returns_none(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
     """Verify that with a stood up processor that the request will reject a request with no prompt."""
 
-    if judgy_class == fake_processors.Judgy:
+    if judgy_class.uses_process_method():
+
+        class NoneReturningProcessor(judgy_class):
+            def process(*_, **__):
+                """Return None as a matter of existence."""
+                return None
+    else:
 
         class NoneReturningProcessor(judgy_class):
             def process_input(*_, **__):
@@ -273,12 +277,6 @@ def test_processor_returns_none(
                 return None
 
             def process_response(*_, **__):
-                """Return None as a matter of existence."""
-                return None
-    else:
-
-        class NoneReturningProcessor(judgy_class):
-            def process(*_, **__):
                 """Return None as a matter of existence."""
                 return None
 
@@ -331,9 +329,7 @@ def test_processor_returns_none(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_processor_returns_bogus_class(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -347,12 +343,12 @@ def test_processor_returns_bogus_class(
         tags = Tags()
         """Bogus class placeholder that is not a valid response object."""
 
-    if judgy_class == fake_processors.Judgy:
+    if judgy_class.uses_process_method():
 
         class BogusClassReturningProcessor(judgy_class):
             """Bogus processor whose process method returns BogusClass type."""
 
-            def process_input(*_, **__):
+            def process(*_, **__):
                 """Return BogusClass type as a matter of existence."""
                 return BogusClass()
     else:
@@ -360,7 +356,7 @@ def test_processor_returns_bogus_class(
         class BogusClassReturningProcessor(judgy_class):
             """Bogus processor whose process method returns BogusClass type."""
 
-            def process(*_, **__):
+            def process_input(*_, **__):
                 """Return BogusClass type as a matter of existence."""
                 return BogusClass()
 
@@ -411,9 +407,7 @@ def test_processor_returns_bogus_class(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_raising_processor(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -465,9 +459,7 @@ def test_raising_processor(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_no_prompt(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -516,9 +508,7 @@ def test_request_no_prompt(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_null_parameters(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -567,9 +557,7 @@ def test_request_null_parameters(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_empty_metadata(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -619,9 +607,7 @@ def test_request_empty_metadata(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_invalid_metadata(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -696,9 +682,7 @@ def test_request_invalid_metadata(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_string_metadata(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -742,9 +726,7 @@ def test_request_string_metadata(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_query_get_command(processor_client_loader, test_logger, judgy_class):
     """Verify that with a ?command=parameters we get the parameters back."""
     expected_status_code = http_status_codes.HTTP_200_OK
@@ -775,9 +757,7 @@ def test_request_query_get_command(processor_client_loader, test_logger, judgy_c
     assert response.json()["parameters"] == judgy.parameters_class.model_json_schema()
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_query_post_command_invalid_json(
     processor_client_loader, test_logger, judgy_class
 ):
@@ -821,9 +801,7 @@ def test_request_query_post_command_invalid_json(
     ]
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_query_post_command_invalid_parameters(
     processor_client_loader, test_logger, judgy_class
 ):
@@ -867,9 +845,7 @@ def test_request_query_post_command_invalid_parameters(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_invalid_parameters(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -919,9 +895,7 @@ def test_request_invalid_parameters(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_required_parameters_missing(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -970,9 +944,7 @@ def test_request_required_parameters_missing(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_required_parameters_present(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -1016,9 +988,7 @@ def test_request_required_parameters_present(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_required_metadata_response_fields(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -1054,9 +1024,7 @@ def test_request_required_metadata_response_fields(
     assert "processor_version" in response.text
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_request_required_parameters_missing_multipart(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -1100,9 +1068,7 @@ def test_request_required_parameters_missing_multipart(
     )
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_modification_with_reject(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -1110,10 +1076,10 @@ def test_modification_with_reject(
     expected_valid_status_code = http_status_codes.HTTP_400_BAD_REQUEST
     method = "post"
 
-    if judgy_class == fake_processors.Judgy:
+    if judgy_class.uses_process_method():
 
         class ModifyAndRejectProcessor(judgy_class):
-            def process_input(*_, **__):
+            def process(*_, **__):
                 """Return None as a matter of existence."""
                 return Result(
                     modified_prompt=RequestInput(
@@ -1126,7 +1092,7 @@ def test_modification_with_reject(
     else:
 
         class ModifyAndRejectProcessor(judgy_class):
-            def process(*_, **__):
+            def process_input(*_, **__):
                 """Return None as a matter of existence."""
                 return Result(
                     modified_prompt=RequestInput(
@@ -1171,9 +1137,7 @@ def test_modification_with_reject(
     assert "mutually exclusive" in response.text
 
 
-@pytest.mark.parametrize(
-    "judgy_class", [(fake_processors.Judgy), (fake_processors.DeprecatedJudgy)]
-)
+@pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
 def test_get_signature_definition(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
@@ -1267,7 +1231,7 @@ def multipart_framing(multipart_prompt, chunk=None, as_iterator=False):
     return multipart(header, retrieval)
 
 
-def fake_judgy(judgy_class=fake_processors.Judgy) -> fake_processors.Judgy:
+def fake_judgy(judgy_class=fake_processors.JudgySync) -> fake_processors.JudgySync:
     return judgy_class(
         PROCESSOR_NAME,
         PROCESSOR_VERSION,
