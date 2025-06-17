@@ -226,7 +226,9 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
                 "The DEPRECATED 'process' method must not be implemented "
                 "alongside 'process_input' or 'process_response'."
             )
-        if is_process_overridden and inspect.iscoroutinefunction(cls.process):
+        if is_process_overridden and inspect.iscoroutinefunction(
+            inspect.unwrap(cls.process)
+        ):
             # we don't want to add async capabilities to the deprecated function
             raise TypeError(
                 f"Cannot create concrete class {cls.__name__}. "
