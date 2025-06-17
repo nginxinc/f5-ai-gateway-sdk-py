@@ -12,7 +12,7 @@ from abc import ABC
 from io import TextIOWrapper, StringIO
 from json import JSONDecodeError
 from typing import Generic, Any, TypeVar
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 import warnings
 
 from pydantic import JsonValue, ValidationError
@@ -1027,22 +1027,22 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
         # the method object directly from the Processor class, then it has been overridden.
         return instance_class_method_obj is not base_class_method_obj
 
-    async def _process_fallback(self, **kwargs) -> Result | Reject:
+    def _process_fallback(self, **kwargs) -> Result | Reject:
         warnings.warn(
             f"{type(self).__name__} uses the deprecated 'process' method. "
             "Implement 'process_input' and/or 'process_response' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        return await self._handle_process_function(self.process, **kwargs)
+        return self.process(**kwargs)
 
-    async def process_input(
+    def process_input(
         self,
         prompt: PROMPT,
         metadata: Metadata,
         parameters: PARAMS,
         request: Request,
-    ) -> Result | Reject:
+    ) -> Result | Reject | Awaitable[Result | Reject]:
         """
         This abstract method is for implementors of the processor to define
         with their own custom logic. Errors should be raised as a subclass
@@ -1070,7 +1070,7 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
                 f"{type(self).__name__} must implement 'process_input' or the "
                 "deprecated 'process' method to handle input."
             )
-        return await self._process_fallback(
+        return self._process_fallback(
             prompt=prompt,
             response=None,
             metadata=metadata,
@@ -1078,14 +1078,14 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
             request=request,
         )
 
-    async def process_response(
+    def process_response(
         self,
         prompt: PROMPT | None,
         response: RESPONSE,
         metadata: Metadata,
         parameters: PARAMS,
         request: Request,
-    ) -> Result | Reject:
+    ) -> Result | Reject | Awaitable[Result | Reject]:
         """
         This abstract method is for implementors of the processor to define
         with their own custom logic. Errors should be raised as a subclass
@@ -1117,7 +1117,7 @@ class Processor(ABC, Generic[PROMPT, RESPONSE, PARAMS]):
                 f"{type(self).__name__} must implement 'process_response' or the "
                 "deprecated 'process' method to handle input."
             )
-        return await self._process_fallback(
+        return self._process_fallback(
             prompt=prompt,
             response=response,
             metadata=metadata,
