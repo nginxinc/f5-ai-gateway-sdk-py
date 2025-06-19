@@ -7,6 +7,8 @@ LICENSE file in the root directory of this source tree.
 SDK Processor that is dynamically judgy based upon the request and is self-aware for reporting.
 """
 
+import asyncio
+import functools
 from pydantic import Field
 from starlette.requests import Request
 
@@ -88,15 +90,19 @@ class JudgyRequiredParameters(JudgyParameters):
     required_message: str
 
 
-class Judgy(Processor):
+class JudgySync(Processor):
     """Complete processor that behaves differently depending on JudgyParameters settings."""
+
+    @classmethod
+    def uses_process_method(cls):
+        return False
 
     def __init__(self, *processor_args, **processor_kwargs):
         """Allow for exceptions to be raised from Judgy during process()."""
         self.raise_error = None
         super().__init__(signature=BOTH_SIGNATURE, *processor_args, **processor_kwargs)
 
-    def process_input(
+    async def process_input(
         self,
         prompt: RequestInput,
         metadata: Metadata,
@@ -105,13 +111,12 @@ class Judgy(Processor):
     ) -> Result | Reject:
         return self._internal_process(
             prompt=prompt,
-            response=None,
             metadata=metadata,
             parameters=parameters,
             request=request,
         )
 
-    def process_response(
+    async def process_response(
         self,
         prompt: RequestInput,
         response: ResponseOutput,
@@ -130,10 +135,10 @@ class Judgy(Processor):
     def _internal_process(
         self,
         prompt: RequestInput,
-        response: ResponseOutput,
         metadata: Metadata,
         parameters: JudgyParameters,
         request: Request,
+        response: ResponseOutput | None = None,
     ) -> Result | Reject:
         """Respond dynamically based upon parameters given to the object initially by the test."""
         if isinstance((raise_error := self.raise_error), Exception):
@@ -167,32 +172,55 @@ class Judgy(Processor):
         return Result(**my_response)
 
 
+class JudgyAsync(Processor):
+    """
+    Implementation using async methods for process_input and process_response
+    """
+
+    @classmethod
+    def uses_process_method(cls):
+        return False
+
+    def __init__(self, *processor_args, **processor_kwargs):
+        """Allow for exceptions to be raised from Judgy during process()."""
+        self.raise_error = None
+        self._internal_judgy = JudgySync(*processor_args, **processor_kwargs)
+        super().__init__(signature=BOTH_SIGNATURE, *processor_args, **processor_kwargs)
+
+    async def process_input(self, **kwargs) -> Result | Reject:
+        if isinstance((raise_error := self.raise_error), Exception):
+            raise raise_error
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, functools.partial(self._internal_judgy._internal_process, **kwargs)
+        )
+
+    async def process_response(self, **kwargs) -> Result | Reject:
+        if isinstance((raise_error := self.raise_error), Exception):
+            raise raise_error
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, functools.partial(self._internal_judgy._internal_process, **kwargs)
+        )
+
+
 class DeprecatedJudgy(Processor):
     """
     Implementation using the deprecated process method instead of process_input and process_response
     """
 
+    @classmethod
+    def uses_process_method(cls):
+        return True
+
     def __init__(self, *processor_args, **processor_kwargs):
         """Allow for exceptions to be raised from Judgy during process()."""
         self.raise_error = None
-        self._internal_judgy = Judgy(*processor_args, **processor_kwargs)
+        self._internal_judgy = JudgySync(*processor_args, **processor_kwargs)
         super().__init__(signature=BOTH_SIGNATURE, *processor_args, **processor_kwargs)
 
-    def process(
-        self,
-        prompt: RequestInput,
-        response: ResponseOutput,
-        metadata: Metadata,
-        parameters: JudgyParameters,
-        request: Request,
-    ) -> Result | Reject:
+    def process(self, **kwargs) -> Result | Reject:
         """Respond dynamically based upon parameters given to the object initially by the test."""
         if isinstance((raise_error := self.raise_error), Exception):
             raise raise_error
-        return self._internal_judgy._internal_process(
-            prompt=prompt,
-            response=response,
-            metadata=metadata,
-            parameters=parameters,
-            request=request,
-        )
+        return self._internal_judgy._internal_process(**kwargs)

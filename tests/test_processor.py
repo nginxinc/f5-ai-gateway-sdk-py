@@ -813,6 +813,91 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
             AllImplementedProcessor()
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
+    def test_async_implemented(self):
+        class AsyncImplementedProcessor(Processor):
+            def __init__(self):
+                super().__init__(
+                    name="non-implemented-processor",
+                    namespace="fake",
+                    signature=BOTH_SIGNATURE,
+                    version="v1",
+                )
+
+            async def process_input(self):
+                return Result()
+
+            async def process_response(self):
+                return Result()
+
+        self.assertIsNotNone(AsyncImplementedProcessor())
+
+    async def test_async_message(self):
+        prompt = TEST_REQ_INPUT.model_dump_json()
+        metadata = {"key": "value"}
+        request = fake_multipart_request(
+            prompt=prompt,
+            metadata=metadata,
+            parameters={"modify": True, "annotate": True},
+        )
+
+        class AsyncInputProcessor(Processor):
+            def __init__(self):
+                super().__init__(
+                    name="async-input-processor",
+                    namespace="fake",
+                    signature=INPUT_ONLY_SIGNATURE,
+                    version="v1",
+                )
+
+            async def process_input(
+                self, prompt, metadata, parameters, request
+            ) -> Result:
+                prompt.messages.append(Message(content="Test message"))
+                return Result(modified_prompt=prompt)
+
+        processor = AsyncInputProcessor()
+
+        response = await processor.handle_request(request)
+
+        self.assertStatusCodeEqual(response, HTTP_200_OK)
+
+        content = await self.buffer_response(response)
+        multipart = MultipartDecoderHelper(
+            content=content, content_type=response.headers["Content-Type"]
+        )
+
+        self.assertTrue(
+            multipart.has_prompt(),
+            "prompt should be in the response",
+        )
+
+        multipart_prompt = multipart.prompt
+        assert "Test message" in multipart_prompt.content
+
+    def test_async_process_implemented(self):
+        expected_message = (
+            "Cannot create concrete class AsyncProcessImplementedProcessor. "
+            "The DEPRECATED 'process' method does not support async. "
+            "Implement 'process_input' and/or 'process_response' instead."
+        )
+
+        with pytest.raises(TypeError) as err:
+
+            class AsyncProcessImplementedProcessor(Processor):
+                def __init__(self):
+                    super().__init__(
+                        name="non-implemented-processor",
+                        namespace="fake",
+                        signature=BOTH_SIGNATURE,
+                        version="v1",
+                    )
+
+                async def process(self):
+                    return Result()
+
+            AsyncProcessImplementedProcessor()
+        self.assertIn(expected_message, err.value.args, str(err.value.args))
+
     def test_input_signature_match(self):
         """Verify we can instantiate a correct input-only processor"""
 

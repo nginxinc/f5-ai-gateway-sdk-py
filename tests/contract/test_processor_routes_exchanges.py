@@ -156,7 +156,7 @@ def test_processor_routes_get_with_one_processor(
         width=width,
         background=background,
     ).strip()
-    judgy = fake_processors.Judgy(
+    judgy = fake_processors.JudgyAsync(
         processor_name,
         processor_version,
         processor_namespace,
