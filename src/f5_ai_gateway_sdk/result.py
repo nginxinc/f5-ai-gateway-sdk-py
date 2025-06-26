@@ -156,6 +156,7 @@ class Reject(BaseModel):
     # be added to the metadata field
     metadata: Metadata = Field(default=Metadata(), exclude=True)
     tags: Tags = Field(default=Tags(), exclude=True)
+    processor_result: Metadata | None = None
 
     def is_empty(self) -> bool:
         """Compatability with Result(), always false due to required fields"""
@@ -169,6 +170,8 @@ class Reject(BaseModel):
         """Return Reject as Response object"""
         if self.tags:
             self.metadata["tags"] = self.tags.to_response()
+        if self.processor_result:
+            self.metadata["processor_result"] = self.processor_result
         return MultipartResponse(
             fields=[
                 self.to_multipart_field(),
