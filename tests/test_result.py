@@ -13,6 +13,7 @@ from f5_ai_gateway_sdk.result import Result
 
 
 def test_prompt_not_allowed_with_response():
+    """Test that modified_prompt and modified_response cannot be used together in a Result."""
     with pytest.raises(
         ValueError,
         match="modified_prompt and modified_response are mutually exlusive",

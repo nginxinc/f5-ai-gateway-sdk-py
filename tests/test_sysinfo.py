@@ -11,6 +11,7 @@ import pytest
 
 
 def test_init():
+    """Test that SysInfo initializes correctly with service name and version."""
     sys_info = SysInfo(service_name="service_name", service_version="1.0.0")
     assert isinstance(sys_info, SysInfo)
     assert "service.name" in sys_info
@@ -20,6 +21,7 @@ def test_init():
 
 
 def test_init_no_version():
+    """Test that SysInfo initializes correctly with only service name and no version."""
     sys_info = SysInfo(service_name="service_name", service_version=None)
     assert isinstance(sys_info, SysInfo)
     assert "service.name" in sys_info
@@ -28,6 +30,7 @@ def test_init_no_version():
 
 
 def test_sysinfo_is_immutable():
+    """Test that SysInfo objects are immutable and cannot be modified after creation."""
     with pytest.raises(TypeError):
         sys_info = SysInfo(service_name="service_name", service_version=None)
         sys_info["service_name"] = "service_name"

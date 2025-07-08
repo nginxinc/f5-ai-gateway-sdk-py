@@ -12,6 +12,7 @@ import pytest
 
 
 def test_tags_init():
+    """Test that Tags initializes correctly with various valid inputs and raises appropriate errors for invalid inputs."""
     assert isinstance(Tags(), Tags)
     assert isinstance(Tags({}), Tags)
     assert isinstance(Tags({"a": ["b"]}), Tags)
@@ -29,6 +30,7 @@ def test_tags_init():
 
 
 def test_tags_modify():
+    """Test that Tags can be modified through add_tag, remove_tag, and remove_key operations."""
     tag = Tags({"a": ["b"]})
     tag.add_tag("c", "d", "e")  # First arg is a tag name.
 

@@ -15,6 +15,7 @@ CONTENT_STRING = "Everybody loves cats because cats are cute and cuddly. But wha
 
 
 def test_json_object_hook_parses():
+    """Test that ResponseOutput.model_validate_json correctly parses valid JSON response."""
     response_json = json.dumps(
         {
             "choices": [
