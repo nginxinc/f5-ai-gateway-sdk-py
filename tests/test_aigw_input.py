@@ -16,6 +16,7 @@ CONTENT_STRING = "Everybody loves cats because cats are cute and cuddly. But wha
 
 
 def test_json_object_hook_parses():
+    """Test that RequestInput.model_validate_json correctly parses valid JSON input."""
     input_json = json.dumps({"messages": [{"content": CONTENT_STRING}]})
 
     parsed_input = RequestInput.model_validate_json(input_json)
@@ -27,6 +28,7 @@ def test_json_object_hook_parses():
 
 
 def test_json_object_hook_allows_role():
+    """Test that RequestInput.model_validate_json correctly handles input with a specific role."""
     input_json = json.dumps(
         {
             "messages": [
@@ -47,6 +49,7 @@ def test_json_object_hook_allows_role():
 
 
 def test_json_object_hook_allows_arbitrary_role():
+    """Test that RequestInput.model_validate_json accepts arbitrary role values."""
     CUSTOM_ROLE = "friend"
     input_json = json.dumps(
         {
@@ -68,6 +71,7 @@ def test_json_object_hook_allows_arbitrary_role():
 
 
 def test_json_object_invalid():
+    """Test that RequestInput.model_validate_json raises a ValidationError for invalid JSON."""
     input_json = json.dumps({"messages": [{"content": CONTENT_STRING}]})[1:]
 
     with pytest.raises(ValidationError):

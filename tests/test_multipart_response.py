@@ -35,7 +35,7 @@ TEST_MESSAGE = Message(content="Are cats better than dogs?")
 @pytest.mark.usefixtures("class_data_loader")
 class MultipartResponseTest(unittest.IsolatedAsyncioTestCase):
     def test_consequence_invalid_status_code(self):
-        """Verify that the status code of 4xx send to MultipartResponse raises."""
+        """Verify that an invalid HTTP status code (outside the valid range) sent to MultipartResponse raises a ValueError."""
         metadata = {
             "user_id": "1234",
             "processor_result": {"processor": "testing"},
@@ -52,7 +52,7 @@ class MultipartResponseTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Invalid HTTP status code", err.value.args)
 
     def test_consequence_undefined_metadata(self):
-        """Verify, as far as render_multipart is, that a default metadata raises."""
+        """Verify that creating a MultipartResponse without metadata raises a ValueError."""
 
         with pytest.raises(ValueError) as err:
             # noinspection PyTypeChecker

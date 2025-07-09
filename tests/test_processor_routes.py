@@ -108,7 +108,7 @@ def test_routes_as_json():
 
 
 def test_list_extensions():
-    """Run through the provided list extensions."""
+    """Verify that ProcessorRoutes implements list-like behaviors such as iteration, indexing, length, membership testing, copying, and equality comparison."""
     processor_routes = fake_processor_routes()
     assert (
         vanilla_order := tuple([proc for proc in iter(processor_routes)])

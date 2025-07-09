@@ -172,6 +172,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
     maxDiff = None
 
     async def test_handle_head_request(self):
+        """Test that HEAD requests to the processor return a 200 OK status code."""
         request = fake_request("HEAD")
         processor = fake_processor()
 
@@ -180,6 +181,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertStatusCodeEqual(response, HTTP_200_OK)
 
     async def test_handle_unsupported_method(self):
+        """Test that unsupported HTTP methods return a 405 Method Not Allowed status code."""
         unsupported_methods = [
             "GET",
             "PUT",
@@ -201,6 +203,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("Only POST requests are supported", body.get("message"))
 
     async def test_no_headers_set(self):
+        """Test that requests with no headers set return a 400 Bad Request status code."""
         request = fake_request("POST")
         processor = fake_processor()
 
@@ -210,6 +213,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.body, b'{"detail": "Content-Type header missing"}')
 
     async def test_empty_content_type(self):
+        """Test that requests with an empty Content-Type header return a 400 Bad Request status code."""
         request = fake_request(method="POST", headers={"content-type": ""})
         processor = fake_processor()
 
@@ -219,6 +223,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b'{"detail": "Content-Type header is empty"}', response.body)
 
     async def test_incorrect_content_type(self):
+        """Test that requests with an incorrect Content-Type header return a 400 Bad Request status code."""
         request = fake_request(
             method="POST", headers={"content-type": "application/json"}
         )
@@ -233,6 +238,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_content_type_with_no_boundary(self):
+        """Test that multipart requests without a boundary parameter return a 400 Bad Request status code."""
         request = fake_request(
             method="POST", headers={"content-type": "multipart/form-data"}
         )
@@ -246,6 +252,8 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_handle_missing_parameters_metadata_and_body(self):
+        """Test that requests missing required multipart fields return a 400 Bad Request status code."""
+
         async def receive():
             return {"type": "http.request"}
 
@@ -262,6 +270,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b'{"detail": "metadata part is missing"}', response.body)
 
     async def test_handle_missing_prompt_and_response(self):
+        """Test that requests missing both prompt and response fields return a 400 Bad Request status code."""
         metadata = {"key": "value"}
         request = fake_multipart_request(metadata=metadata)
         processor = fake_processor()
@@ -277,6 +286,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_handle_malformed_metadata(self):
+        """Test that requests with malformed metadata JSON return a 400 Bad Request status code."""
         body = (
             self.data_loader("malformed_metadata_body.txt")
             .replace("\n", "\r\n")
@@ -306,6 +316,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected_detail, actual_detail, "expected error message")
 
     async def test_handle_valid_prompt_with_none_processor_result(self):
+        """Test that a valid prompt with a processor returning None results in a 200 OK response."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(prompt=prompt, metadata=metadata)
@@ -318,6 +329,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b"", response.body, "expected empty body")
 
     async def test_handle_valid_prompt_with_tags_processor_result(self):
+        """Test that a valid prompt with a processor result containing tags properly includes those tags in the response."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -344,6 +356,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("test1", multipart_metadata.content, "expected tags in response")
 
     async def test_handle_valid_prompt_with_empty_processor_result(self):
+        """Test that a valid prompt with an empty processor result returns a 200 OK response with expected content."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(prompt=prompt, metadata=metadata)
@@ -356,6 +369,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b"", response.body, "expected empty body")
 
     async def test_handle_valid_prompt_with_processor_result(self):
+        """Test that a valid prompt with a processor result returns a 200 OK response with the expected metadata and content."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -401,6 +415,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertDictEqual(expected_response_metadata, response_metadata)
 
     async def test_handle_rejected_prompt(self):
+        """Test that a processor rejecting a prompt returns the expected response with rejection metadata."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value", "step_id": "12345", "request_id": "09876"}
         request = fake_multipart_request(
@@ -495,6 +510,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertDictEqual(expected_response_metadata, response_metadata)
 
     async def test_handle_modified_prompt(self):
+        """Test that a processor modifying a prompt returns the modified prompt in the response."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -569,6 +585,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertDictEqual(expected_response_metadata, response_metadata)
 
     async def test_handle_unmodified_prompt(self):
+        """Test that an unmodified prompt is returned correctly in the response."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -628,10 +645,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertDictEqual(expected_response_metadata, response_metadata)
 
     async def test_handle_modification_of_prompt_object(self):
-        """
-        Verifies that process functions which modify the object
-        directly correctly detect modifications
-        """
+        """Test that direct modification of prompt objects works correctly and is reflected in the response."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -673,6 +687,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         assert "Test message" in multipart_prompt.content
 
     async def test_prompt_send_with_file_header(self):
+        """Test that prompts with file headers are properly processed."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -687,6 +702,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b"", response.body, "expected empty body")
 
     def test_to_dict(self):
+        """Test that the to_dict method correctly converts processor properties to a dictionary."""
         processor = fake_processor()
         expected = self.data_loader("processor_as_dict.yaml")
         expected.update(
@@ -704,21 +720,21 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_name_whitespace_error(self):
-        """Verify that a ValueError is issued when Processor is created with a name that contains whitespace."""
+        """Test that creating a processor with whitespace in the name raises a ValueError."""
         expected_message = "Processor name cannot contain whitespace"
         with pytest.raises(ValueError) as err:
             MinimalFakeProcessor("foo bar", "", "", BOTH_SIGNATURE)
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_version_whitespace_error(self):
-        """Verify that a ValueError is issued when Processor is created with a version that contains whitespace."""
+        """Test that creating a processor with whitespace in the version raises a ValueError."""
         expected_message = "Processor version cannot contain whitespace"
         with pytest.raises(ValueError) as err:
             MinimalFakeProcessor("foo_bar", "1 1", "namespace", BOTH_SIGNATURE)
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_processor_neq_other_type(self):
-        """Verify that a False is issued when a processor is compared to a different type."""
+        """Test that a processor is not equal to objects of other types."""
 
         class Foo:
             pass
@@ -727,7 +743,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(processor, Foo())
 
     def test_processor_eq_processor(self):
-        """Verify two processors created the same are equal."""
+        """Test that processors with the same properties are considered equal."""
         name = "foo_bar"
         version = "1.1"
         namespace = "namespace"
@@ -751,7 +767,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
     def test_multipart_field_validation_valid(
         self, signature_fields: Iterable[str], signatures: Iterable[Signature]
     ):
-        """Verify that the multipart field validation passes when all required fields are present."""
+        """Test that valid multipart fields pass validation without errors."""
         for signature in signatures:
             processor = fake_processor(a_signature=signature)
             fields: list[tuple[str, str]] = list(
@@ -779,7 +795,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
     def test_multipart_field_validation_invalid(
         self, signature_fields: Iterable[str], signatures: Iterable[Signature]
     ):
-        """Verify that the multipart field validation fails when a required field is missing or wrongly assigned."""
+        """Test that invalid multipart fields raise ValidationError exceptions with appropriate error messages."""
         for signature in signatures:
             processor = fake_processor(a_signature=signature)
             fields: list[tuple[str, str]] = list(
@@ -800,6 +816,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
             )
 
     def test_no_subclass(self):
+        """Test that instantiating Processor directly raises a TypeError as it's an abstract class."""
         expected_message = (
             "Processor is an abstract base class and cannot be instantiated directly."
         )
@@ -810,6 +827,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_none_implemented(self):
+        """Test that a processor subclass that doesn't implement any processing methods raises a TypeError."""
         expected_message = (
             "Cannot create concrete class NonImplementedProcessor. "
             "It must override AT LEAST ONE of the following methods: "
@@ -832,6 +850,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_all_implemented(self):
+        """Test that a processor subclass that implements all processing methods initializes correctly."""
         expected_message = (
             "Cannot create concrete class AllImplementedProcessor. "
             "The DEPRECATED 'process' method must not be implemented "
@@ -862,6 +881,8 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_async_implemented(self):
+        """Test that a processor subclass with async implementations of processing methods initializes correctly."""
+
         class AsyncImplementedProcessor(Processor):
             def __init__(self):
                 super().__init__(
@@ -880,6 +901,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(AsyncImplementedProcessor())
 
     async def test_async_message(self):
+        """Test that async processing methods are properly executed when handling requests."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -923,6 +945,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         assert "Test message" in multipart_prompt.content
 
     def test_async_process_implemented(self):
+        """Test that a processor subclass with an async implementation of the process method initializes correctly."""
         expected_message = (
             "Cannot create concrete class AsyncProcessImplementedProcessor. "
             "The DEPRECATED 'process' method does not support async. "
@@ -947,7 +970,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_input_signature_match(self):
-        """Verify we can instantiate a correct input-only processor"""
+        """Test that a processor with a matching input signature initializes without errors."""
 
         class InputMatchProcessor(Processor):
             def __init__(self):
@@ -964,6 +987,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         InputMatchProcessor()
 
     def test_input_signature_mismatch(self):
+        """Test that a processor with a mismatched input signature raises a TypeError."""
         expected_message = (
             "Cannot create concrete class InputMismatchProcessor. "
             "Provided Signature supports input but 'process_input' "
@@ -988,7 +1012,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_response_signature_match(self):
-        """Verify we can instantiate a correct response-only processor"""
+        """Test that a processor with a matching response signature initializes without errors."""
 
         class ResponseMatchProcessor(Processor):
             def __init__(self):
@@ -1005,6 +1029,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         ResponseMatchProcessor()
 
     def test_response_signature_mismatch(self):
+        """Test that a processor with a mismatched response signature raises a TypeError."""
         expected_message = (
             "Cannot create concrete class ResponseMismatchProcessor. "
             "Provided Signature supports response but 'process_response' "
@@ -1029,6 +1054,8 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(expected_message, err.value.args, str(err.value.args))
 
     def test_deprecated_process_signature_match(self):
+        """Test that a processor using the deprecated process signature initializes correctly."""
+
         class DeprecatedProcessor(Processor):
             def __init__(self):
                 super().__init__(
@@ -1077,6 +1104,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
                 )
 
     async def test_not_allowed_modify_dropped(self):
+        """Test that attempting to modify a prompt when not allowed results in the modification being dropped."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(prompt=prompt, metadata=metadata)
@@ -1097,6 +1125,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertStatusCodeEqual(response, HTTP_200_OK)
 
     async def test_not_allowed_annotate_dropped(self):
+        """Test that attempting to add annotations when not allowed results in the annotations being dropped."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
@@ -1117,6 +1146,7 @@ class ProcessorTest(unittest.IsolatedAsyncioTestCase):
         self.assertStatusCodeEqual(response, HTTP_200_OK)
 
     async def test_not_allowed_reject_dropped(self):
+        """Test that attempting to reject a prompt when not allowed results in the rejection being ignored."""
         prompt = TEST_REQ_INPUT.model_dump_json()
         metadata = {"key": "value"}
         request = fake_multipart_request(
