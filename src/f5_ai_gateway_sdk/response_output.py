@@ -5,7 +5,7 @@ This source code is licensed under the Apache License Version 2.0 found in the
 LICENSE file in the root directory of this source tree.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from f5_ai_gateway_sdk.multipart_fields import RESPONSE_NAME
 from f5_ai_gateway_sdk.multipart_response import MultipartResponseField
@@ -21,6 +21,7 @@ class Choice(BaseModel):
     """
 
     __autoclass_content__ = "class"
+    model_config = ConfigDict(extra="allow")
 
     message: Message
 
@@ -47,6 +48,7 @@ class ResponseOutput(BaseModel):
     """
 
     __autoclass_content__ = "class"
+    model_config = ConfigDict(extra="allow")
 
     choices: list[Choice]
     """A list of ``Choice`` objects."""
