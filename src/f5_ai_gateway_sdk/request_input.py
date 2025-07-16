@@ -7,7 +7,15 @@ LICENSE file in the root directory of this source tree.
 
 from io import StringIO
 
-from pydantic import BaseModel
+from typing import Any, Self
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    field_serializer,
+    PrivateAttr,
+)
+from pydantic.functional_validators import model_validator
 
 from f5_ai_gateway_sdk.multipart_fields import INPUT_NAME
 from f5_ai_gateway_sdk.multipart_response import MultipartResponseField
@@ -40,9 +48,43 @@ class Message(BaseModel):
     """
 
     __autoclass_content__ = "class"
+    model_config = ConfigDict(extra="allow")
 
     content: str
     role: str = MessageRole.USER
+    _content_parsed_as_null: bool = PrivateAttr(default=False)
+
+    # messages may have null content when
+    # containing tool_calls
+    # this tracks that case in order to allow
+    # returning in the same format without the
+    # SDK user needing to handle None on content
+    @model_validator(mode="before")
+    @classmethod
+    def track_null_content(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("content") is None:
+            # Store this info in the data itself so it survives validation
+            data["__content_parsed_as_null__"] = True
+            data["content"] = ""
+        return data
+
+    @model_validator(mode="after")
+    def set_null_flag(self) -> Self:
+        # Check if the original data indicated null content
+        if hasattr(self, "__content_parsed_as_null__") or getattr(
+            self, "__content_parsed_as_null__", False
+        ):
+            self._content_parsed_as_null = True
+            # Remove the temporary tracking field now that we've set the private attribute
+            if hasattr(self, "__content_parsed_as_null__"):
+                delattr(self, "__content_parsed_as_null__")
+        return self
+
+    @field_serializer("content")
+    def serialize_content(self, content: str):
+        if self._content_parsed_as_null and len(content) == 0:
+            return None
+        return content
 
 
 class RequestInput(BaseModel):
@@ -68,6 +110,8 @@ class RequestInput(BaseModel):
     """
 
     __autoclass_content__ = "class"
+    model_config = ConfigDict(extra="allow")
+
     messages: list[Message]
 
     def to_multipart_field(self) -> MultipartResponseField:
