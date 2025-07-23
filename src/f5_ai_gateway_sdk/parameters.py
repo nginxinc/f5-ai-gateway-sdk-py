@@ -10,7 +10,7 @@ from typing import final, Any
 from collections.abc import Mapping, Iterator
 
 from opentelemetry.util.types import AttributeValue
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Parameters(BaseModel):
@@ -36,12 +36,6 @@ class Parameters(BaseModel):
         default=False,
         description="Whether the processor can reject requests.",
     )
-
-    @model_validator(mode="after")
-    def check_not_reject_and_modify(self):
-        if self.reject and self.modify:
-            raise ValueError("Modify and Reject modes are mutually exclusive")
-        return self
 
     def otel_attributes(
         self, key_prefix: str = "parameters."
