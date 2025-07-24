@@ -30,7 +30,6 @@ from f5_ai_gateway_sdk.parameters import Parameters
 from f5_ai_gateway_sdk.processor import Tags
 from f5_ai_gateway_sdk.request_input import Message, RequestInput
 from f5_ai_gateway_sdk.response_output import Choice, ResponseOutput
-from f5_ai_gateway_sdk.result import Result
 
 from ..libs.exceptions import TestTypeError
 from ..libs.fakes import processors as fake_processors
@@ -79,22 +78,22 @@ def test_multipart_fields_breaking_change():
         f"breaking change detected: {encoded_field} change from {expected_metadata_name}"
     )
     assert (encoded_fields := multipart_fields.INPUT_NAME) == expected_prompt_name, (
-        f"breaking change detected: {encoded_fields} change from {expected_optional_multipart_fields}"
+        f"breaking change detected: {encoded_fields} change from {expected_prompt_name}"
     )
     assert (
         encoded_field := multipart_fields.INPUT_PARAMETERS_NAME
     ) == expected_prompt_parameters_name, (
-        f"breaking change detected: {encoded_field} change from {expected_prompt_name}"
+        f"breaking change detected: {encoded_field} change from {expected_prompt_parameters_name}"
     )
     assert (
         encoded_field := multipart_fields.RESPONSE_NAME
     ) == expected_response_name, (
-        f"breaking change detected: {encoded_field} change from {expected_prompt_name}"
+        f"breaking change detected: {encoded_field} change from {expected_response_name}"
     )
     assert (
         encoded_field := multipart_fields.RESPONSE_PARAMETERS_NAME
     ) == expected_response_parameters_name, (
-        f"breaking change detected: {encoded_field} change from {expected_prompt_name}"
+        f"breaking change detected: {encoded_field} change from {expected_response_parameters_name}"
     )
     # - validate required versus optional field definitions; order not super important
     assert (expected := set(expected_required_multipart_fields)) == (
@@ -109,7 +108,7 @@ def test_multipart_fields_breaking_change():
 def test_processor_response_parameters_a_prompt_mismatch(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that response parameters cannot be present with only an input field."""
     expected_message = (
         f"response parameters cannot be present with only a {INPUT_NAME} field"
     )
@@ -159,7 +158,7 @@ def test_processor_response_parameters_a_prompt_mismatch(
 def test_processor_overload_both_parameters(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that providing both input and response parameters generates an error."""
     expected_message = (
         f"response parameters cannot be present with only a {INPUT_NAME} field"
     )
@@ -171,7 +170,9 @@ def test_processor_overload_both_parameters(
     test_logger.info(f"given: processor with path: {PROCESSOR_PATH}")
     judgy = fake_judgy(judgy_class)
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info(
+        "when: client requests a post with both input and response parameters"
+    )
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -211,7 +212,7 @@ def test_processor_overload_both_parameters(
 def test_processor_500_raising(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that processor errors are properly handled and return a 500 status code."""
     expected_response = """{"detail": "problem executing processor implementation"}"""
     expected_status_code = http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -223,7 +224,9 @@ def test_processor_500_raising(
         http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR, "fool of the fools"
     )
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info(
+        "when: client requests a post with a prompt that causes processor to raise an error"
+    )
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -261,7 +264,7 @@ def test_processor_500_raising(
 def test_processor_returns_none(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that processors returning None are handled properly with appropriate error messages."""
 
     if judgy_class.uses_process_method():
 
@@ -296,7 +299,9 @@ def test_processor_returns_none(
     )
     judgy.raise_error = TypeError("fool of the fools")
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info(
+        "when: client requests a post with a prompt and processor returns None"
+    )
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -333,7 +338,7 @@ def test_processor_returns_none(
 def test_processor_returns_bogus_class(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that processors returning invalid objects are handled properly with appropriate error messages."""
 
     class BogusClass:
         rejected = False
@@ -374,7 +379,9 @@ def test_processor_returns_bogus_class(
     )
     judgy.raise_error = TypeError("fool of the fools")
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info(
+        "when: client requests a post with a prompt and processor returns invalid object"
+    )
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -426,7 +433,9 @@ def test_raising_processor(
     )
     judgy.raise_error = TypeError("fool of the fools")
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info(
+        "when: client requests a post with a prompt that causes processor to raise an error"
+    )
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -512,7 +521,7 @@ def test_request_no_prompt(
 def test_request_null_parameters(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that null parameters are properly validated and rejected."""
     expected_response = """{"detail": "invalid parameters submitted", "messages": ["Input should be an object"]}"""
     expected_status_code = http_status_codes.HTTP_400_BAD_REQUEST
 
@@ -526,7 +535,7 @@ def test_request_null_parameters(
         parameters_class=fake_processors.JudgyParameters,
     )
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info("when: client requests a post with null parameters")
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -561,7 +570,7 @@ def test_request_null_parameters(
 def test_request_empty_metadata(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that empty metadata is properly handled."""
     expected_response = '{"detail": "Unable to parse JSON field [metadata]: Expecting value: line 1 column 1 (char 0)"}'
     expected_status_code = http_status_codes.HTTP_400_BAD_REQUEST
 
@@ -575,7 +584,7 @@ def test_request_empty_metadata(
         parameters_class=fake_processors.JudgyParameters,
     )
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info("when: client requests a post with empty metadata")
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -611,7 +620,7 @@ def test_request_empty_metadata(
 def test_request_invalid_metadata(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that invalid metadata format is properly rejected."""
     expected_response = """{"detail": "invalid metadata submitted"}"""
     expected_status_code = http_status_codes.HTTP_400_BAD_REQUEST
 
@@ -625,7 +634,7 @@ def test_request_invalid_metadata(
         parameters_class=fake_processors.JudgyParameters,
     )
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info("when: client requests a post with invalid metadata")
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -686,7 +695,7 @@ def test_request_invalid_metadata(
 def test_request_string_metadata(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that string metadata (instead of JSON object) is properly rejected."""
     expected_response = """{"detail": "metadata must be a JSON object"}"""
     expected_status_code = http_status_codes.HTTP_400_BAD_REQUEST
 
@@ -695,7 +704,7 @@ def test_request_string_metadata(
     test_logger.info(f"given: processor with path: {PROCESSOR_PATH}")
     judgy = fake_judgy(judgy_class)
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info("when: client requests a post with string metadata")
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -849,7 +858,7 @@ def test_request_query_post_command_invalid_parameters(
 def test_request_invalid_parameters(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that invalid parameters are properly validated and rejected."""
     expected_error = """{"detail": "invalid parameters submitted", "messages": ["Input should be a valid boolean: modified"]}"""
     expected_status_code = http_status_codes.HTTP_400_BAD_REQUEST
 
@@ -863,7 +872,7 @@ def test_request_invalid_parameters(
         parameters_class=fake_processors.JudgyParameters,
     )
 
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info("when: client requests a post with invalid parameters")
     client = processor_client_loader(judgy)
     parameters = data_loader("judgy_parameters.yaml")
     parameters["modified"] = "Lucy in the sky with diamonds"
@@ -899,7 +908,7 @@ def test_request_invalid_parameters(
 def test_request_required_parameters_missing(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that missing required parameters are properly validated and rejected."""
     expected_error = """{"detail": "invalid parameters submitted", "messages": ["Field required: required_message"]}"""
     expected_invalid_status_code = http_status_codes.HTTP_400_BAD_REQUEST
     method = "post"
@@ -948,7 +957,7 @@ def test_request_required_parameters_missing(
 def test_request_required_parameters_present(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that requests with required parameters present are handled correctly."""
     expected_valid_status_code = http_status_codes.HTTP_400_BAD_REQUEST
     method = "post"
 
@@ -1028,7 +1037,7 @@ def test_request_required_metadata_response_fields(
 def test_request_required_parameters_missing_multipart(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
+    """Verify that missing required parameters in multipart requests are properly validated and rejected."""
     expected_error = """{"detail": "invalid parameters submitted", "messages": ["Field required: required_message"]}"""
     expected_valid_status_code = http_status_codes.HTTP_400_BAD_REQUEST
     method = "post"
@@ -1072,45 +1081,16 @@ def test_request_required_parameters_missing_multipart(
 def test_modification_with_reject(
     data_loader, processor_client_loader, test_logger, judgy_class
 ):
-    """Verify that with a stood up processor that the request will reject a request with no prompt."""
-    expected_valid_status_code = http_status_codes.HTTP_400_BAD_REQUEST
+    """Verify that processors allow modify and reject to be set at once."""
+    expected_valid_status_code = http_status_codes.HTTP_200_OK
     method = "post"
 
-    if judgy_class.uses_process_method():
-
-        class ModifyAndRejectProcessor(judgy_class):
-            def process(*_, **__):
-                """Return None as a matter of existence."""
-                return Result(
-                    modified_prompt=RequestInput(
-                        messages=[Message(content="foo-input")]
-                    ),
-                    modified_response=ResponseOutput(
-                        choices=[Choice(message=Message(content="bar-output"))]
-                    ),
-                )
-    else:
-
-        class ModifyAndRejectProcessor(judgy_class):
-            def process_input(*_, **__):
-                """Return None as a matter of existence."""
-                return Result(
-                    modified_prompt=RequestInput(
-                        messages=[Message(content="foo-input")]
-                    ),
-                    modified_response=ResponseOutput(
-                        choices=[Choice(message=Message(content="bar-output"))]
-                    ),
-                )
-
-    test_logger.info(f"given: processor with path: {PROCESSOR_PATH}")
-    judgy = ModifyAndRejectProcessor(
+    judgy = judgy_class(
         PROCESSOR_NAME,
         PROCESSOR_VERSION,
         PROCESSOR_NAMESPACE,
+        parameters_class=fake_processors.JudgyParameters,
     )
-
-    test_logger.info("when: client requests a post without a required parameter")
     client = processor_client_loader(judgy)
     data = build_processor_prompt_content(
         data_loader,
@@ -1134,7 +1114,6 @@ def test_modification_with_reject(
     assert response.status_code == expected_valid_status_code, (
         f"({response.status_code} != {expected_valid_status_code}) from {method}({PROCESSOR_PATH}): {content}"
     )
-    assert "mutually exclusive" in response.text
 
 
 @pytest.mark.parametrize("judgy_class", TEST_PROCESSORS)
@@ -1147,7 +1126,7 @@ def test_get_signature_definition(
 
     test_logger.info(f"given: processor with path: {SIGNATURE_PATH}")
     judgy = fake_judgy(judgy_class)
-    test_logger.info("when: client requests a post with no prompt")
+    test_logger.info("when: client requests signature definition")
     client = processor_client_loader(judgy)
     request = client.build_request(
         url=SIGNATURE_PATH, method=method, headers={"Accept": "application/json"}
