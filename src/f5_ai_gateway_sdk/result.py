@@ -81,7 +81,7 @@ class Result(BaseModel):
             self.modified_prompt = None
             self.modified_response = None
 
-        if bool(self.tags) and not annotate:
+        if self.tags and not annotate:
             logging.warning(
                 "%s tried to annotate request with tags when parameters.annotate was set to false, tags will be dropped",
                 processor_name,
