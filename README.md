@@ -4,7 +4,9 @@
 
 # F5 AI Gateway Processor SDK
 
-This project is a Python SDK for the F5 AI Gateway Processors specification. 
+## Following [F5's acquisition of CalypsoAI](https://www.f5.com/company/blog/what-are-ai-guardrails), this SDK has reached its End of Life. F5 customers should speak to their account manager about our [AI Guardrails](https://www.f5.com/products/ai-guardrails) and [AI Red Team products](https://www.f5.com/products/ai-red-team).
+
+This project is a Python SDK for the F5 AI Gateway Processors specification.
 It is designed to be used as a base for building a [Starlette](https://www.starlette.io/) application that
 implements Python based Processors for the AI Gateway.
 
